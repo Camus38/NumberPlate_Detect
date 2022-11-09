@@ -6,6 +6,8 @@ import time
 import numpy as np
 import threading
 import pytesseract
+from _thread import *
+import threading
 
 
 def changeImage(image):
@@ -193,7 +195,7 @@ def changeImage(image):
     plate_chars = []
 
     for i, plate_img in enumerate(plate_imgs):
-        plate_img = cv2.resize(plate_img, dsize=(0,0),fx=1.2, fy=1.2)
+        plate_img = cv2.resize(plate_img, dsize=(0,0),fx=1.1, fy=1.1)
         plate_img = cv2.cvtColor(plate_img,cv2.COLOR_BGR2GRAY)
         plate_img = cv2.GaussianBlur(plate_img,ksize=(5,5),sigmaX=0)
         _,plate_img = cv2.threshold(plate_img,0,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU)
@@ -244,7 +246,6 @@ def changeImage(image):
             longest_idx = i
     info = plate_infos[longest_idx]
     chars = plate_chars[longest_idx]
-    print(chars)
 
     return img_out, chars
 
@@ -278,26 +279,55 @@ def endecode(data):
     encoded_img = cv2.imencode(".jpg",cimage)[1].tobytes()
     return encoded_img, chars
 
+def threaded(client_socket,addr):
+    print('Connected by : ',addr[0],':',addr[1])
+    #size = client_socket.recv(4)
+    #data = recvall(client_socket)
+    while True:
+            data=recvall(client_socket)
+            if not data:
+                print('Disconnected')
+                break
+            print('Received from '+addr[0],':',addr[1])
+            result, chars = endecode(data)
+            print(chars)
+            client_socket.send(result)
+            #client_socket.send(chars.encode('utf-8'))
+            #client_socket.close()
+            break
+    client_socket.close()
+
 ip = ''
-port =4000
+port =30000
 
 server_socket = socket.socket(socket.AF_INET)
 server_socket.bind((ip,port))
 server_socket.listen()
 print('클라이언트 기다리는중...')
-while True:
-    client_socket, addr = server_socket.accept()
-    print('클라이언트 연결됨',addr)
-    data=recvall(client_socket)
-    result, chars = endecode(data)
-    #test = client_socket.recv(10).decode('utf-8')
-    #client_socket.sendall(result)
 
-    #test = client_socket.recv(10).decode('utf-8')
-    client_socket.send(chars.encode('utf-8'))
-    test=recv(client_socket)
-    client_socket.sendall(result)
-    print(test)
-    print("전송완료")
-    client_socket.close()
+try:
+    while True:
+        print('클라이언트 대기 중 ...')
+        client_socket, addr = server_socket.accept()
+        #start_new_thread(threaded(client_socket,addr))
+        th = threading.Thread(threaded(client_socket,addr))
+        th.start()
+except:
+    print("server")
+finally:
+    server_socket.close()
+#print('클라이언트 연결됨',addr)
+     #print('서버 구동중')
+     #data=recvall(client_socket)
+     #result, chars = endecode(data)
+     #test = client_socket.recv(10).decode('utf-8')
+     #client_socket.send(result)
+     #client_socket.sendall(result)
 
+     #test = client_socket.recv(10).decode('utf-8')
+     #client_socket.send(chars.encode('utf-8'))
+     #test=recv(client_socket)
+     #client_socket.sendall(result)
+     #print(test)
+     #print("전송완료")
+server_socket.close()
