@@ -326,18 +326,4 @@ except Exception as  e:
     print(e)
 finally:
     server_socket.close()
-#print('클라이언트 연결됨',addr)
-     #print('서버 구동중')
-     #data=recvall(client_socket)
-     #result, chars = endecode(data)
-     #test = client_socket.recv(10).decode('utf-8')
-     #client_socket.send(result)
-     #client_socket.sendall(result)
-
-     #test = client_socket.recv(10).decode('utf-8')
-     #client_socket.send(chars.encode('utf-8'))
-     #test=recv(client_socket)
-     #client_socket.sendall(result)
-     #print(test)
-     #print("전송완료")
 server_socket.close()
