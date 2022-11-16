@@ -175,7 +175,7 @@ def changeImage(image):
 
         img_cropped = cv2.getRectSubPix(
                 img_rotated,
-                patchSize=(int(plate_width), int(plate_height)),
+                patchSize=(int(plate_width), int(plate_height)+10),
                 center=(int(plate_cx), int(plate_cy))
                 )
 
@@ -199,31 +199,31 @@ def changeImage(image):
         plate_img = cv2.cvtColor(plate_img,cv2.COLOR_BGR2GRAY)
         plate_img = cv2.GaussianBlur(plate_img,ksize=(5,5),sigmaX=0)
         _,plate_img = cv2.threshold(plate_img,0,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        contorus, _= cv2.findContours(plate_img,mode=cv2.RETR_LIST,method=cv2.CHAIN_APPROX_SIMPLE)
-        plate_min_x, plate_min_y = plate_img.shape[1], plate_img.shape[0]
-        plate_max_x, plate_max_y = 0, 0
+    #    contorus, _= cv2.findContours(plate_img,mode=cv2.RETR_LIST,method=cv2.CHAIN_APPROX_SIMPLE)
+        #plate_min_x, plate_min_y = plate_img.shape[1], plate_img.shape[0]
+        #plate_max_x, plate_max_y = 0, 0
 
-        for contour in contours:
-            x,y,w,h = cv2.boundingRect(contour)
+        #for contour in contours:
+        #    x,y,w,h = cv2.boundingRect(contour)
 
-            area = w * h
-            ratio = w / h
+         #   area = w * h
+         #   ratio = w / h
 
-            if area > MIN_AREA \
-            and w > MIN_WIDTH and h > MIN_HEIGHT \
-            and MIN_RATIO < ratio < MAX_RATIO:
-                        if x < plate_min_x:
-                            plate_min_x = x
-                        if y < plate_min_y:
-                            plate_min_y = y
-                        if x + w > plate_max_x:
-                            plate_max_x = x + w
-                        if y + h > plate_max_y:
-                            plate_max_y = y + h
+        #    if area > MIN_AREA \
+        #    and w > MIN_WIDTH and h > MIN_HEIGHT \
+        #    and MIN_RATIO < ratio < MAX_RATIO:
+        #                if x < plate_min_x:
+        #                    plate_min_x = x
+        #                if y < plate_min_y:
+        #                    plate_min_y = y
+        #                if x + w > plate_max_x:
+        #                    plate_max_x = x + w
+        #                if y + h > plate_max_y:
+        #                    plate_max_y = y + h
 
         img_out = plate_img
         #img_out = cv2.getRectSubPix(img_out,patchSize=(int(plate_width),int(plate_height)),
-        #        center=(int(plate_cx),int(plate_cy)))
+        #       center=(int(plate_cx),int(plate_cy)))
         #img_out = cv2.resize(img_out,dsize=(0,0),fx=1.5,fy=1.5)
         #img_out = cv2.cvtColor(img_out, cv2.COLOR_BGR2GRAY)
         #img_out = cv2.GaussianBlur(img_out,ksize=(3,3),sigmaX=0)
@@ -232,7 +232,7 @@ def changeImage(image):
         #        thresholdType=cv2.THRESH_BINARY_INV,blockSize=19,C=9)
         #img_out = cv2.copyMakeBorder(img_out,top=5,bottom=5,left=5,right=5,borderType=cv2.BORDER_CONSTANT,
         #        value=(0,0,0))
-        chars = pytesseract.image_to_string(img_out, lang='kor',config= '--psm 7 --oem 1')
+        chars = pytesseract.image_to_string(img_out, lang='kor',config='--psm 7 --oem 1')
         result_chars = ''
         has_digit = False
         for c in chars:
@@ -244,6 +244,7 @@ def changeImage(image):
 
         if has_digit and len(result_chars) > longest_text:
             longest_idx = i
+
     info = plate_infos[longest_idx]
     chars = plate_chars[longest_idx]
 
@@ -263,10 +264,15 @@ def recvall(sock):
     return data
 
 def recv(sock):
-    while True:
-        parts = sock.recv(10).decode('utf-8')
-        if len(parts)>3:
-            break
+    try:
+        while True:
+            print("a")
+            parts = sock.recv(10).decode('utf-8')
+            print(parts)
+            if len(parts)>3:
+                break
+    except Exception as e:
+        print(e)
     return parts
 
 def getnum(num):
@@ -277,25 +283,29 @@ def endecode(data):
     image = cv2.imdecode(encoded,flags=1)
     cimage, chars = changeImage(image)
     encoded_img = cv2.imencode(".jpg",cimage)[1].tobytes()
-    return encoded_img, chars
+    return encoded, chars
 
 def threaded(client_socket,addr):
     print('Connected by : ',addr[0],':',addr[1])
     #size = client_socket.recv(4)
     #data = recvall(client_socket)
     while True:
+        try:
             data=recvall(client_socket)
             if not data:
                 print('Disconnected')
                 break
             print('Received from '+addr[0],':',addr[1])
-            result, chars = endecode(data)
+            result,chars = endecode(data)
             print(chars)
             client_socket.send(result)
             #client_socket.send(chars.encode('utf-8'))
             #client_socket.close()
             break
+        except Exception as e:
+            print(e)
     client_socket.close()
+
 
 ip = ''
 port =30000
@@ -312,8 +322,8 @@ try:
         #start_new_thread(threaded(client_socket,addr))
         th = threading.Thread(threaded(client_socket,addr))
         th.start()
-except:
-    print("server")
+except Exception as  e:
+    print(e)
 finally:
     server_socket.close()
 #print('클라이언트 연결됨',addr)
